@@ -10,6 +10,7 @@ import {
   DashboardHeader, DashboardStatCard, QuickActionCard,
   StatusBadge, SearchBar, FilterBar, TablePagination,
   NotificationPanel, AlertCard, EmptyState, LoadingState,
+  WithdrawalModal, AnomalyModal, AgentScanModal,
 } from '../../../components/agent';
 import '../../../components/agent/AgentDashboard.css';
 
@@ -17,12 +18,16 @@ const STATUS_OPTIONS = [
   { value: 'available_pickup', label: 'Disponible' },
   { value: 'arrived', label: 'Arrivé' },
   { value: 'collected', label: 'Récupéré' },
+  { value: 'damaged', label: 'Anomalie' },
 ];
 
 export function RetraitDashboardPage() {
   const { user } = useAuth();
   const d = useRetraitDashboard(user);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [selectedWithdrawalParcel, setSelectedWithdrawalParcel] = useState(null);
+  const [selectedAnomalyParcel, setSelectedAnomalyParcel] = useState(null);
 
   const paginatedParcels = useMemo(() => {
     const { page, perPage } = d.pagination;
@@ -83,11 +88,47 @@ export function RetraitDashboardPage() {
 
       {/* Quick Actions */}
       <div className="ag-quick-actions ag-quick-actions--5">
-        <QuickActionCard icon={QrCode} label="Scanner un code" hint="Lire QR code colis" color="primary" />
-        <QuickActionCard icon={Search} label="Rechercher colis" hint="Trouver un colis" color="info" />
-        <QuickActionCard icon={Handshake} label="Valider retrait" hint="Remettre au client" color="success" />
-        <QuickActionCard icon={History} label="Historique" hint="Consulter l'historique" color="warning" />
-        <QuickActionCard icon={FileWarning} label="Créer anomalie" hint="Signaler un problème" color="danger" />
+        <QuickActionCard
+          icon={QrCode}
+          label="Scanner un code"
+          hint="Lire QR code colis"
+          color="primary"
+          onClick={() => setShowScanModal(true)}
+        />
+        <QuickActionCard
+          icon={Search}
+          label="Rechercher colis"
+          hint="Trouver un colis"
+          color="info"
+          onClick={() => setShowScanModal(true)}
+        />
+        <QuickActionCard
+          icon={Handshake}
+          label="Valider retrait"
+          hint="Remettre au client"
+          color="success"
+          onClick={() => setShowScanModal(true)}
+        />
+        <QuickActionCard
+          icon={History}
+          label="Historique"
+          hint="Consulter l'historique"
+          color="warning"
+          onClick={() => d.setFilters({ ...d.filters, status: 'collected' })}
+        />
+        <QuickActionCard
+          icon={FileWarning}
+          label="Créer anomalie"
+          hint="Signaler un problème"
+          color="danger"
+          onClick={() => {
+            if (d.filteredParcels.length > 0) {
+              setSelectedAnomalyParcel(d.filteredParcels[0]);
+            } else {
+              setShowScanModal(true);
+            }
+          }}
+        />
       </div>
 
       {/* Main Grid */}
@@ -210,11 +251,21 @@ export function RetraitDashboardPage() {
                       <td data-label="Statut"><StatusBadge status={pkg.status} /></td>
                       <td data-label="Actions">
                         <div className="ag-actions-cell">
-                          <button className="ag-action-btn" type="button" aria-label="Valider le retrait">
+                          <button
+                            className="ag-action-btn text-success"
+                            type="button"
+                            title="Valider le retrait"
+                            onClick={() => setSelectedWithdrawalParcel(pkg)}
+                          >
                             <Handshake size={14} />
                           </button>
-                          <button className="ag-action-btn" type="button" aria-label="Voir détails">
-                            <Eye size={14} />
+                          <button
+                            className="ag-action-btn text-danger"
+                            type="button"
+                            title="Signaler un problème"
+                            onClick={() => setSelectedAnomalyParcel(pkg)}
+                          >
+                            <FileWarning size={14} />
                           </button>
                         </div>
                       </td>
@@ -241,6 +292,37 @@ export function RetraitDashboardPage() {
           onClose={() => setShowNotifications(false)}
           onMarkRead={d.markNotificationRead}
           onMarkAllRead={d.markAllNotificationsRead}
+        />
+      )}
+
+      {/* Withdrawal Modal */}
+      {selectedWithdrawalParcel && (
+        <WithdrawalModal
+          parcel={selectedWithdrawalParcel}
+          user={user}
+          onClose={() => setSelectedWithdrawalParcel(null)}
+          onSuccess={() => d.refresh()}
+        />
+      )}
+
+      {/* Anomaly Modal */}
+      {selectedAnomalyParcel && (
+        <AnomalyModal
+          parcel={selectedAnomalyParcel}
+          user={user}
+          onClose={() => setSelectedAnomalyParcel(null)}
+          onSuccess={() => d.refresh()}
+        />
+      )}
+
+      {/* Scan Modal */}
+      {showScanModal && (
+        <AgentScanModal
+          user={user}
+          onClose={() => setShowScanModal(false)}
+          onSelectParcel={(parcel) => {
+            setSelectedWithdrawalParcel(parcel);
+          }}
         />
       )}
     </div>

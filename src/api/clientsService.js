@@ -7,16 +7,16 @@ export const mapClient = (client) => ({
 });
 
 export const toClientPayload = (data) => ({
-  companyId: data.companyId,
-  firstName: data.firstName,
-  lastName: data.lastName,
-  email: data.email || '',
-  phone: data.phone || '',
-  city: data.city || '',
-  address: data.address || '',
-  idType: data.documentType || '',
-  idNumber: data.documentNumber || '',
-  preferredAgencyId: data.agencyId ? Number(data.agencyId) : undefined,
+  companyId: data.companyId ? Number(data.companyId) : undefined,
+  firstName: data.firstName?.trim() || '',
+  lastName: data.lastName?.trim() || data.firstName?.trim() || '',
+  email: data.email?.trim() ? data.email.trim().toLowerCase() : null,
+  phone: data.phone?.trim() ? data.phone.trim() : null,
+  city: data.city?.trim() ? data.city.trim() : null,
+  address: data.address?.trim() ? data.address.trim() : null,
+  idType: data.documentType || data.idType || null,
+  idNumber: data.documentNumber || data.idNumber || null,
+  preferredAgencyId: data.agencyId || data.preferredAgencyId ? Number(data.agencyId || data.preferredAgencyId) : undefined,
 });
 
 export const clientsService = {

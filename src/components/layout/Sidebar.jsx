@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { NAV_ITEMS, SUPER_ADMIN_NAV, NAV_FOOTER, SIDEBAR_WIDTH_EXPANDED, SIDEBAR_WIDTH_COLLAPSED } from '../../config/navigation';
+import { NAV_ITEMS, SUPER_ADMIN_NAV, DEPOT_AGENT_NAV, RETRAIT_AGENT_NAV, NAV_FOOTER, SIDEBAR_WIDTH_EXPANDED, SIDEBAR_WIDTH_COLLAPSED } from '../../config/navigation';
 import { ChevronLeft, ChevronRight, ChevronDown, LayoutDashboard } from 'lucide-react';
 import { AuthLogo } from '../auth';
 import './Sidebar.css';
@@ -25,7 +25,7 @@ function SidebarItem({ item, collapsed, pathname }) {
             `lp-sidebar__link ${isActive ? 'lp-sidebar__link--active' : ''}`
           }
           title={collapsed ? item.label : undefined}
-          end={item.key === 'admin_dashboard' || item.key === 'dashboard'}
+          end={item.key === 'admin_dashboard' || item.key === 'dashboard' || item.key === 'depot_dashboard' || item.key === 'retrait_dashboard'}
         >
           <item.icon size={20} className="lp-sidebar__icon" />
           {!collapsed && <span className="lp-sidebar__label">{item.label}</span>}
@@ -83,13 +83,17 @@ export function Sidebar() {
   const { pathname } = useLocation();
 
   const isSuperAdmin = user?.role === 'super_admin';
-  const isAgent = user?.employeeRole === 'depot_agent' || user?.employeeRole === 'retrait_agent';
-  const agentHome = user?.employeeRole === 'depot_agent' ? '/dashboard/depot' : '/dashboard/retrait';
+  const roleKey = user?.employeeRole || user?.role;
+  const isDepotAgent = roleKey === 'depot_agent';
+  const isRetraitAgent = roleKey === 'retrait_agent';
+
   const navItems = isSuperAdmin
     ? SUPER_ADMIN_NAV
-    : isAgent
-      ? [{ key: 'agent_dashboard', label: 'Tableau de bord', icon: LayoutDashboard, path: agentHome }]
-      : NAV_ITEMS;
+    : isDepotAgent
+      ? DEPOT_AGENT_NAV
+      : isRetraitAgent
+        ? RETRAIT_AGENT_NAV
+        : NAV_ITEMS;
 
   const handleLogout = async () => {
     await logout();
@@ -98,6 +102,7 @@ export function Sidebar() {
 
   const handleAction = (item) => {
     if (item.action === 'logout') handleLogout();
+    if (item.action === 'home') navigate('/');
   };
 
   const width = collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED;

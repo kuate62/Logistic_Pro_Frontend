@@ -3,7 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { ClientSidebar } from './ClientSidebar';
 import { DashboardFooter } from './DashboardFooter';
-import { Bell, Menu, ChevronDown, LogOut, User } from 'lucide-react';
+import { Bell, Menu, ChevronDown, LogOut, User, House } from 'lucide-react';
 import './ClientLayout.css';
 import '../../pages/dashboard/client/ClientPortal.css';
 
@@ -56,6 +56,15 @@ export function ClientLayout() {
           </div>
 
           <div className="cl-topbar__right">
+            <button
+              className="cl-topbar__icon-btn"
+              type="button"
+              aria-label="Aller à l'accueil"
+              title="Retour au site"
+              onClick={() => navigate('/')}
+            >
+              <House size={20} />
+            </button>
             <button className="cl-topbar__icon-btn" type="button" aria-label="Notifications">
               <Bell size={20} />
             </button>

@@ -23,22 +23,42 @@ export function useDashboard() {
     return new Intl.NumberFormat('fr-CM', {
       style: 'decimal',
       maximumFractionDigits: 0,
-    }).format(val) + ' FC';
+    }).format(val) + ' FCFA';
   }, []);
 
   const formatDate = useCallback((date) => {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    }).format(new Date(date));
+    if (!date) return '—';
+    if (typeof date === 'string' && !date.includes('-') && !date.includes('/')) {
+      return date;
+    }
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return typeof date === 'string' ? date : '—';
+    try {
+      return new Intl.DateTimeFormat('fr-FR', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      }).format(d);
+    } catch {
+      return typeof date === 'string' ? date : '—';
+    }
   }, []);
 
   const formatTime = useCallback((date) => {
-    return new Intl.DateTimeFormat('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(date));
+    if (!date) return '—';
+    if (typeof date === 'string' && (date.includes(':') && date.length <= 8 || date.includes('min') || date.includes('h'))) {
+      return date;
+    }
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return typeof date === 'string' ? date : '—';
+    try {
+      return new Intl.DateTimeFormat('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(d);
+    } catch {
+      return typeof date === 'string' ? date : '—';
+    }
   }, []);
 
   return {

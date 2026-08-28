@@ -92,6 +92,8 @@ export const mapShipment = (shipment) => {
     transportAmount: shipment.totalAmount || 0,
     insuranceAmount: 0,
     totalAmount: shipment.totalAmount || 0,
+    routeId: shipment.routeId || null,
+    route: shipment.route || null,
     paidAmount: shipment.paidAmount || 0,
     paymentStatus: shipment.paymentStatus || 'pending',
   };
@@ -189,6 +191,7 @@ export const shipmentsService = {
       companyId,
       agencyId: data.originAgencyId,
       destinationAgencyId: data.destinationAgencyId || undefined,
+      routeId: data.routeId || undefined,
       agentId: data.agentId || undefined,
       origin: data.originCity,
       destination: data.destinationCity,

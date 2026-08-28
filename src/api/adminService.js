@@ -111,16 +111,18 @@ const mapPlatformUser = (u) => ({
   createdAt: u.createdAt,
 });
 
-const mapManager = (u, companyByUserId, nameByCompany) => {
-  const companyId = companyByUserId[u.id];
+const mapManager = (u, companyByUserId = {}, nameByCompany = {}) => {
+  const comp = u.employeeProfile?.company || null;
+  const companyId = comp?.id || companyByUserId[u.id] || '';
+  const companyName = comp?.name || nameByCompany[companyId] || '';
   return {
     id: u.id,
     firstName: u.firstname || '',
     lastName: u.lastname || '',
     email: u.email || '',
     phone: u.phone || '',
-    companyId: companyId || '',
-    companyName: nameByCompany[companyId] || '',
+    companyId: String(companyId),
+    companyName: companyName,
     role: 'enterprise_admin',
     isActive: !!u.status,
     lastLogin: '',
@@ -153,43 +155,29 @@ async function fetchCompanyDetail(companyId) {
 
 export const adminService = {
   async getDashboardStats() {
-    const mock = await mockAdminService.getDashboardStats();
     try {
-      const [cRes, sRes, uRes, pRes] = await Promise.all([
-        apiClient.get('/companies', { params: { limit: 1000 } }),
-        apiClient.get('/subscriptions', { params: { limit: 1000 } }),
-        apiClient.get('/users', { params: { limit: 1000 } }),
-        apiClient.get('/partner-requests', { params: { status: 'pending', limit: 100 } }),
-      ]);
-      const companies = cRes.data.companies || [];
-      const subs = sRes.data.subscriptions || [];
-      const users = uRes.data.users || [];
-      const planCount = {};
-      subs.forEach((s) => {
-        const k = PLAN_LABELS[s.plan] || s.plan || 'free';
-        planCount[k] = (planCount[k] || 0) + 1;
-      });
+      const res = await apiClient.get('/admin/stats');
+      const data = res.data;
       return {
-        ...mock,
         stats: {
-          ...mock.stats,
-          totalEnterprises: companies.length,
-          activeEnterprises: companies.filter((c) => c.status === 'active').length,
-          suspendedEnterprises: companies.filter((c) => c.status === 'suspended').length,
-          archivedEnterprises: companies.filter((c) => c.status === 'inactive').length,
-          totalPlatformUsers: users.length,
-          totalManagers: users.filter((u) => u.roles === 'ROLE_ADMIN').length,
-          pendingRequests: pRes.data.total || 0,
+          totalEnterprises: data.stats?.totalEnterprises || 0,
+          activeEnterprises: data.stats?.activeEnterprises || 0,
+          suspendedEnterprises: data.stats?.suspendedEnterprises || 0,
+          archivedEnterprises: data.stats?.archivedEnterprises || 0,
+          totalPlatformUsers: data.stats?.totalPlatformUsers || 0,
+          totalManagers: data.stats?.totalManagers || 0,
+          pendingRequests: data.stats?.pendingRequests || 0,
+          totalRevenue: data.stats?.totalRevenue || 0,
         },
-        enterprisesByPlan: Object.entries(planCount).map(([plan, count]) => ({ plan, count })),
-        subscriptionsByStatus: [
-          { status: 'active', count: subs.filter((s) => s.status === 'active').length },
-          { status: 'suspended', count: subs.filter((s) => s.status === 'cancelled').length },
-          { status: 'expired', count: subs.filter((s) => s.status === 'expired').length },
-        ],
+        revenueChart: data.revenueChart || [],
+        subscriptionsByStatus: data.subscriptionsByStatus || [],
+        enterprisesByPlan: (data.enterprisesByPlan || []).map((p) => ({
+          plan: PLAN_LABELS[p.plan] || p.plan || 'Free',
+          count: p.count,
+        })),
       };
     } catch {
-      return mock;
+      return mockAdminService.getDashboardStats();
     }
   },
 
@@ -463,25 +451,24 @@ export const adminService = {
     }
   },
 
+  async createSuperAdmin(data) {
+    const res = await apiClient.post('/users', {
+      firstname: data.firstName,
+      lastname: data.lastName,
+      email: data.email,
+      phone: data.phone || null,
+      password: data.password,
+      roles: 'ROLE_ROOT',
+      status: true,
+      verified: true,
+    });
+    return mapPlatformUser(res.data.user);
+  },
+
   async getManagers(filters = {}) {
     try {
-      const [uRes, eRes, cRes] = await Promise.all([
-        apiClient.get('/users', { params: { roles: 'ROLE_ADMIN', limit: 1000 } }),
-        apiClient.get('/employees', { params: { limit: 1000 } }),
-        apiClient.get('/companies', { params: { limit: 1000 } }),
-      ]);
-      const nameByCompany = {};
-      (cRes.data.companies || []).forEach((c) => {
-        nameByCompany[c.id] = c.name;
-      });
-      const companyByUserId = {};
-      (eRes.data.employees || []).forEach((emp) => {
-        if (emp.userId) companyByUserId[emp.userId] = emp.companyId;
-      });
-
-      let list = (uRes.data.users || []).map((u) =>
-        mapManager(u, companyByUserId, nameByCompany)
-      );
+      const uRes = await apiClient.get('/users', { params: { roles: 'ROLE_ADMIN', limit: 1000 } });
+      let list = (uRes.data.users || []).map((u) => mapManager(u));
 
       if (filters.search) {
         const q = filters.search.toLowerCase();
@@ -502,15 +489,33 @@ export const adminService = {
   },
 
   async getNotifications(filters = {}) {
-    return mockAdminService.getNotifications(filters);
+    try {
+      const params = {};
+      if (filters.type && filters.type !== 'all') params.type = filters.type;
+      if (filters.unread) params.unread = true;
+      const res = await apiClient.get('/notifications', { params });
+      return res.data.notifications || [];
+    } catch {
+      return mockAdminService.getNotifications(filters);
+    }
   },
 
   async markNotificationRead(id) {
-    return mockAdminService.markNotificationRead(id);
+    try {
+      const res = await apiClient.patch(`/notifications/${id}/read`);
+      return res.data.notification;
+    } catch {
+      return mockAdminService.markNotificationRead(id);
+    }
   },
 
   async markAllNotificationsRead() {
-    return mockAdminService.markAllNotificationsRead();
+    try {
+      const res = await apiClient.post('/notifications/mark-all-read');
+      return res.data;
+    } catch {
+      return mockAdminService.markAllNotificationsRead();
+    }
   },
 };
 

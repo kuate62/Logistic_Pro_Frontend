@@ -102,13 +102,14 @@ export function useRequests() {
 }
 
 export function usePlatformUsers() {
-  const { platformUsers, loading, error, fetchPlatformUsers } = useAdminStore();
+  const { platformUsers, loading, error, fetchPlatformUsers, createSuperAdmin } = useAdminStore();
 
   return {
     platformUsers,
     loading,
     error,
     fetchPlatformUsers,
+    createSuperAdmin,
   };
 }
 

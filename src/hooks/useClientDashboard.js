@@ -26,7 +26,7 @@ export function useClientDashboard(clientId) {
   }, [store.shipments, store.search, store.filters]);
 
   const formatCurrency = useCallback((val) => {
-    return new Intl.NumberFormat('fr-FR', { style: 'decimal', maximumFractionDigits: 0 }).format(val) + ' FC';
+    return new Intl.NumberFormat('fr-FR', { style: 'decimal', maximumFractionDigits: 0 }).format(val) + ' FCFA';
   }, []);
 
   const formatTime = useCallback((date) => {

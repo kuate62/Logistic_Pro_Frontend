@@ -9,6 +9,7 @@ import {
   Package, Rocket, Search, Settings, Smartphone, Truck,
 } from 'lucide-react';
 import { usePartnerApplication } from '../../hooks/usePartnerApplication';
+import { useAuth } from '../../hooks/useAuth';
 import {
   PARTNER_AGENCY_COUNT_OPTIONS, PARTNER_BENEFITS, PARTNER_COUNTRIES,
   PARTNER_EMPLOYEE_COUNT_OPTIONS, PARTNER_MANAGER_ROLES, PARTNER_REGIONS,
@@ -236,16 +237,29 @@ function PlansSection({ plans, loading, selectedPlan, onSelect }) {
 }
 
 function ApplicationSection({ selectedPlan, loading, error, onSubmit }) {
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
 
   const {
-    register, handleSubmit, trigger,
+    register, handleSubmit, trigger, reset,
     formState: { errors, isValid, isSubmitting },
   } = useForm({
     resolver: zodResolver(schema),
     defaultValues,
     mode: 'onChange',
   });
+
+  useEffect(() => {
+    if (user) {
+      reset((prev) => ({
+        ...prev,
+        managerLastName: prev.managerLastName || user.lastname || user.lastName || '',
+        managerFirstName: prev.managerFirstName || user.firstname || user.firstName || '',
+        managerEmail: prev.managerEmail || user.email || '',
+        managerPhone: prev.managerPhone || user.phone || '',
+      }));
+    }
+  }, [user, reset]);
 
   useEffect(() => {
     trigger();

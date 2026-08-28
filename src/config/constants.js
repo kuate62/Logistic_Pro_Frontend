@@ -20,6 +20,11 @@ export const ROLE_LABELS = {
   [ROLES.DEPOT_AGENT]: 'Agent de dépôt',
   [ROLES.RETRAIT_AGENT]: 'Agent de retrait',
   [ROLES.CLIENT]: 'Client',
+  manager: 'Responsable d\'agence',
+  supervisor: 'Superviseur de stock',
+  accountant: 'Comptable',
+  delivery_driver: 'Chauffeur / Livreur',
+  admin: 'Administrateur',
 };
 
 export const AUTH_STATUS = {

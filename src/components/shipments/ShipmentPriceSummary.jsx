@@ -18,16 +18,16 @@ export default function ShipmentPriceSummary({ packages, maxWeight }) {
       <hr className="my-2" />
       <div className="d-flex justify-content-between small mb-2">
         <span className="text-muted">Transport</span>
-        <span className="fw-medium">{transportAmount.toLocaleString('fr-FR')} FC</span>
+        <span className="fw-medium">{(transportAmount || 0).toLocaleString('fr-FR')} FCFA</span>
       </div>
       <div className="d-flex justify-content-between small mb-2">
         <span className="text-muted">Assurances</span>
-        <span className="fw-medium">{insuranceAmount.toLocaleString('fr-FR')} FC</span>
+        <span className="fw-medium">{(insuranceAmount || 0).toLocaleString('fr-FR')} FCFA</span>
       </div>
       <hr className="my-2" />
       <div className="d-flex justify-content-between">
         <span className="fw-semibold">Total à payer</span>
-        <span className="fw-bold text-primary fs-5">{totalAmount.toLocaleString('fr-FR')} FC</span>
+        <span className="fw-bold text-primary fs-5">{(totalAmount || 0).toLocaleString('fr-FR')} FCFA</span>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import {
   Package, Truck, CreditCard, Users, Clock,
@@ -10,6 +11,7 @@ import {
   DashboardHeader, DashboardStatCard, QuickActionCard,
   StatusBadge, SearchBar, FilterBar, TablePagination,
   RecentActivity, NotificationPanel, EmptyState, LoadingState,
+  AgentScanModal,
 } from '../../../components/agent';
 import '../../../components/agent/AgentDashboard.css';
 
@@ -33,10 +35,12 @@ const DEST_OPTIONS = [
 ];
 
 export function DepotDashboardPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const d = useDepotDashboard(user);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showParcels, setShowParcels] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
 
   const paginatedShipments = useMemo(() => {
     const { page, perPage } = d.pagination;
@@ -97,11 +101,41 @@ export function DepotDashboardPage() {
 
       {/* Quick Actions */}
       <div className="ag-quick-actions ag-quick-actions--5">
-        <QuickActionCard icon={Plus} label="Nouvelle expédition" hint="Enregistrer un envoi" color="primary" />
-        <QuickActionCard icon={UserPlus} label="Ajouter un client" hint="Créer une fiche client" color="success" />
-        <QuickActionCard icon={DollarSign} label="Enregistrer paiement" hint="Saisir un règlement" color="warning" />
-        <QuickActionCard icon={Search} label="Rechercher" hint="Trouver une expédition" color="info" />
-        <QuickActionCard icon={QrCode} label="Scanner un code" hint="Lire un QR code" color="secondary" />
+        <QuickActionCard
+          icon={Plus}
+          label="Nouvelle expédition"
+          hint="Enregistrer un envoi"
+          color="primary"
+          onClick={() => navigate('/shipments/new')}
+        />
+        <QuickActionCard
+          icon={UserPlus}
+          label="Ajouter un client"
+          hint="Créer une fiche client"
+          color="success"
+          onClick={() => navigate('/clients')}
+        />
+        <QuickActionCard
+          icon={DollarSign}
+          label="Enregistrer paiement"
+          hint="Saisir un règlement"
+          color="warning"
+          onClick={() => navigate('/payments')}
+        />
+        <QuickActionCard
+          icon={Search}
+          label="Rechercher"
+          hint="Trouver une expédition"
+          color="info"
+          onClick={() => setShowScanModal(true)}
+        />
+        <QuickActionCard
+          icon={QrCode}
+          label="Scanner un code"
+          hint="Lire un QR code"
+          color="secondary"
+          onClick={() => setShowScanModal(true)}
+        />
       </div>
 
       {/* Main Grid */}
@@ -247,6 +281,14 @@ export function DepotDashboardPage() {
           onClose={() => setShowNotifications(false)}
           onMarkRead={d.markNotificationRead}
           onMarkAllRead={d.markAllNotificationsRead}
+        />
+      )}
+
+      {/* Scan Modal */}
+      {showScanModal && (
+        <AgentScanModal
+          user={user}
+          onClose={() => setShowScanModal(false)}
         />
       )}
     </div>

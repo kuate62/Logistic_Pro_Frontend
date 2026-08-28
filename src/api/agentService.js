@@ -59,10 +59,9 @@ function mapAgent(employee, user) {
 
 async function resolveContext(user) {
   const companyId = user?.companyId || null;
-  const agencyId = user?.agencyId || null;
-
   let employee = null;
-  if (user?.employeeId) {
+
+  if (user?.employeeId && companyId) {
     try {
       employee = await employeesService.getById(companyId, user.employeeId);
     } catch {
@@ -70,13 +69,15 @@ async function resolveContext(user) {
     }
   }
 
+  const agencyId = user?.agencyId || user?.employeeProfile?.agencyId || employee?.agencyId || null;
+
   const company = companyId
     ? await apiClient.get(`/companies/${companyId}`)
         .then((r) => mapCompany(r.data.company))
         .catch(() => null)
     : null;
 
-  const agency = agencyId
+  const agency = (companyId && agencyId)
     ? await agenciesService.getById(companyId, agencyId).catch(() => null)
     : null;
 
@@ -87,10 +88,22 @@ async function fetchDepotData(user) {
   const ctx = await resolveContext(user);
   const { companyId, agencyId } = ctx;
 
+  const paramsShipments = { page: 1, limit: SHIPMENT_LIMIT };
+  if (companyId) paramsShipments.companyId = companyId;
+  if (agencyId) paramsShipments.originAgencyId = agencyId;
+
+  const paramsParcels = { page: 1, limit: PARCEL_LIMIT };
+  if (companyId) paramsParcels.companyId = companyId;
+  if (agencyId) paramsParcels.originAgencyId = agencyId;
+
+  const paramsPayments = { page: 1, limit: PAYMENT_LIMIT };
+  if (companyId) paramsPayments.companyId = companyId;
+  if (agencyId) paramsPayments.agencyId = agencyId;
+
   const [shipmentsResp, parcelsResp, paymentsResp] = await Promise.all([
-    apiClient.get('/shipments', { params: { companyId, agencyId, page: 1, limit: SHIPMENT_LIMIT } }),
-    apiClient.get('/parcels', { params: { companyId, agencyId, page: 1, limit: PARCEL_LIMIT } }),
-    apiClient.get('/payments', { params: { companyId, agencyId, page: 1, limit: PAYMENT_LIMIT } }),
+    apiClient.get('/shipments', { params: paramsShipments }),
+    apiClient.get('/parcels', { params: paramsParcels }),
+    apiClient.get('/payments', { params: paramsPayments }),
   ]);
 
   const shipments = (shipmentsResp.data.shipments || []).map(mapShipment);
@@ -101,35 +114,35 @@ async function fetchDepotData(user) {
   const todayParcels = parcels.filter((p) => isSameDay(p.createdAt));
   const todayPayments = payments.filter((p) => isSameDay(p.createdAt));
 
-  const amountCollected = todayPayments.reduce(
+  const amountCollected = (todayPayments.length ? todayPayments : payments).reduce(
     (sum, p) => sum + (p.status === 'paid' || p.status === 'completed' ? p.amount || 0 : 0),
     0
   );
-  const clientsReceived = new Set(todayShipments.map((s) => s.clientId)).size;
+  const clientsReceived = new Set(shipments.map((s) => s.clientId)).size;
 
   const stats = {
-    shipmentsToday: todayShipments.length,
-    parcelsToday: todayParcels.length,
+    shipmentsToday: todayShipments.length || shipments.length,
+    parcelsToday: todayParcels.length || parcels.length,
     amountCollected,
     clientsReceived,
-    pendingShipments: shipments.filter((s) => s.status === 'validated' || s.status === 'preparing').length,
+    pendingShipments: shipments.filter((s) => s.status === 'validated' || s.status === 'preparing' || s.status === 'assigned').length,
   };
 
   const activities = [
-    ...todayShipments.slice(0, 8).map((s) => ({
+    ...shipments.slice(0, 8).map((s) => ({
       id: `ship_${s.id}`,
       type: 'shipment',
       title: `Expédition ${s.reference} créée`,
-      description: `${s.senderName} → ${s.destinationCity}`,
+      description: `${s.senderName} → ${s.destinationCity || s.destination}`,
       clientName: s.senderName,
       reference: s.reference,
       status: 'completed',
       time: s.createdAt,
     })),
-    ...todayPayments.slice(0, 6).map((p) => ({
+    ...payments.slice(0, 6).map((p) => ({
       id: `pay_${p.id}`,
       type: 'payment',
-      title: `Paiement de ${(p.amount || 0).toLocaleString('fr-FR')} FC reçu`,
+      title: `Paiement de ${(p.amount || 0).toLocaleString('fr-FR')} FCFA reçu`,
       description: `Pour ${p.shipmentNumber || p.reference}`,
       clientName: p.clientName,
       reference: p.reference,
@@ -145,9 +158,9 @@ async function fetchDepotData(user) {
     agency: ctx.agency,
     company: ctx.company,
     stats,
-    shipments: shipments.slice(0, 15),
-    parcels: parcels.slice(0, 12),
-    payments: todayPayments,
+    shipments: shipments.slice(0, 20),
+    parcels: parcels.slice(0, 15),
+    payments: payments.slice(0, 15),
     activities,
     notifications: [],
     alerts: [],
@@ -156,24 +169,24 @@ async function fetchDepotData(user) {
 
 function buildWithdrawalActivities(parcels) {
   return parcels
-    .filter((p) => p.collectedAt)
-    .sort((a, b) => new Date(b.collectedAt) - new Date(a.collectedAt))
+    .filter((p) => p.collectedAt || p.updatedAt)
+    .sort((a, b) => new Date(b.collectedAt || b.updatedAt) - new Date(a.collectedAt || a.updatedAt))
     .slice(0, 10)
     .map((p) => ({
       id: `withdrawal_${p.id}`,
       type: 'parcel',
-      title: `Colis ${p.trackingNumber} remis`,
+      title: `Colis ${p.trackingNumber} ${p.status === 'collected' ? 'remis' : p.status}`,
       description: `${p.receiverName || 'Destinataire'} — ${p.category}`,
       clientName: p.receiverName || '',
       reference: p.trackingNumber,
       status: 'completed',
-      time: p.collectedAt,
+      time: p.collectedAt || p.updatedAt,
     }));
 }
 
 function buildRetraitAlerts(available, anomalies) {
   const alerts = [];
-  if (available.length >= 3) {
+  if (available.length > 0) {
     alerts.push({
       id: 'late_parcels',
       type: 'late',
@@ -202,27 +215,29 @@ async function fetchRetraitData(user) {
   const ctx = await resolveContext(user);
   const { companyId, agencyId } = ctx;
 
-  const parcelsResp = await apiClient.get('/parcels', {
-    params: { companyId, destinationAgencyId: agencyId, page: 1, limit: PARCEL_LIMIT },
-  });
+  const params = { page: 1, limit: PARCEL_LIMIT };
+  if (companyId) params.companyId = companyId;
+  if (agencyId) params.destinationAgencyId = agencyId;
+
+  const parcelsResp = await apiClient.get('/parcels', { params });
 
   const parcels = (parcelsResp.data.parcels || []).map(mapParcel);
 
-  const available = parcels.filter((p) => p.status === 'available_pickup' || p.status === 'arrived');
-  const collected = parcels.filter((p) => p.status === 'collected' && p.collectedAt);
+  const available = parcels.filter((p) => p.status === 'available_pickup' || p.status === 'arrived' || p.status === 'in_transit');
+  const collected = parcels.filter((p) => p.status === 'collected' || p.status === 'delivered');
   const collectedToday = collected.filter((p) => isSameDay(p.collectedAt));
   const anomalies = parcels.filter((p) => p.status === 'damaged' || p.status === 'cancelled');
 
   const stats = {
     availableParcels: available.length,
-    collectedToday: collectedToday.length,
-    clientsServed: new Set(collectedToday.map((p) => p.shipmentId)).size,
-    pendingPickup: parcels.filter((p) => p.status === 'arrived' || p.status === 'available_pickup').length,
+    collectedToday: collectedToday.length || collected.length,
+    clientsServed: new Set(parcels.map((p) => p.shipmentId)).size,
+    pendingPickup: available.length,
     anomalyParcels: anomalies.length,
   };
 
-  const recentWithdrawals = collected
-    .sort((a, b) => new Date(b.collectedAt) - new Date(a.collectedAt))
+  const recentWithdrawals = (collected.length ? collected : parcels)
+    .sort((a, b) => new Date(b.collectedAt || b.updatedAt) - new Date(a.collectedAt || a.updatedAt))
     .slice(0, 10)
     .map((p) => ({
       ...p,
@@ -275,6 +290,79 @@ export const agentService = {
   async getRetraitAvailableParcels(user) {
     const data = await this.getRetraitDashboard(user);
     return data.availableParcels || [];
+  },
+
+  async validateWithdrawal(parcelId, { recipientName, idNumber, note, agentName, collectPayment, shipmentId, companyId, agencyId, amount, paymentMethod }) {
+    if (collectPayment && shipmentId && companyId && amount > 0) {
+      await apiClient.post('/payments', {
+        shipmentId: Number(shipmentId),
+        companyId: Number(companyId),
+        agencyId: agencyId ? Number(agencyId) : undefined,
+        amount: Number(amount),
+        paymentMethod: paymentMethod || 'cash',
+        status: 'paid',
+        note: `Paiement au retrait du colis par ${recipientName || 'destinataire'}`
+      });
+    }
+
+    const description = `Remis à ${recipientName || 'destinataire'}${idNumber ? ` (Pièce N° ${idNumber})` : ''}${note ? ` — ${note}` : ''}`;
+    const response = await apiClient.patch(`/parcels/${parcelId}/status`, {
+      status: 'collected',
+      description,
+      agentName: agentName || 'Agent Guichet'
+    });
+    return mapParcel(response.data.parcel);
+  },
+
+  async reportAnomaly(parcelId, { reason, agentName }) {
+    const response = await apiClient.patch(`/parcels/${parcelId}/status`, {
+      status: 'damaged',
+      description: reason || 'Anomalie ou dommage signalé au guichet',
+      agentName: agentName || 'Agent Guichet'
+    });
+    return mapParcel(response.data.parcel);
+  },
+
+  async searchParcelByTracking(trackingNumber) {
+    if (!trackingNumber?.trim()) {
+      throw new Error('Veuillez saisir un numéro de suivi ou une référence');
+    }
+
+    const cleanNumber = trackingNumber.trim();
+
+    try {
+      const response = await apiClient.get('/parcels/tracking', {
+        params: { trackingNumber: cleanNumber },
+      });
+      if (response.data?.parcel) {
+        return mapParcel(response.data.parcel);
+      }
+    } catch {
+      // Poursuivre vers la recherche générale
+    }
+
+    try {
+      const listResp = await apiClient.get('/parcels', {
+        params: { search: cleanNumber, limit: 1 },
+      });
+      const parcel = listResp.data.parcels?.[0];
+      if (parcel) return mapParcel(parcel);
+
+      // Essayer de trouver une expédition par référence pour extraire son colis
+      const shipResp = await apiClient.get('/shipments', {
+        params: { search: cleanNumber, limit: 1 },
+      });
+      const shipment = shipResp.data.shipments?.[0];
+      if (shipment?.id) {
+        const shipDetail = await apiClient.get(`/shipments/${shipment.id}`);
+        const p = shipDetail.data.shipment?.parcels?.[0];
+        if (p) return mapParcel(p);
+      }
+    } catch {
+      // Ignorer pour lancer l'erreur explicite ci-dessous
+    }
+
+    throw new Error(`Aucun colis trouvé avec le numéro ou la référence "${cleanNumber}"`);
   },
 };
 

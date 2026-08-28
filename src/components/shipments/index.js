@@ -10,3 +10,7 @@ export { default as ShipmentTimeline } from './ShipmentTimeline';
 export { default as ShipmentStatistics } from './ShipmentStatistics';
 export { default as ShipmentStepper } from './ShipmentStepper';
 export { default as ShipmentPackageForm } from './ShipmentPackageForm';
+export { default as ClientSearchAutocomplete } from './ClientSearchAutocomplete';
+export { default as ParcelLabelModal } from './ParcelLabelModal';
+export { default as ShipmentReceiptModal } from './ShipmentReceiptModal';
+export { default as ShipmentSuccessModal } from './ShipmentSuccessModal';

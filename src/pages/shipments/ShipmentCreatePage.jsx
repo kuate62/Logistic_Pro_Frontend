@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Send } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -7,8 +7,11 @@ import ShipmentStepper from '../../components/shipments/ShipmentStepper';
 import ShipmentWeightIndicator from '../../components/shipments/ShipmentWeightIndicator';
 import ShipmentPriceSummary from '../../components/shipments/ShipmentPriceSummary';
 import ShipmentPackageForm from '../../components/shipments/ShipmentPackageForm';
+import ClientSearchAutocomplete from '../../components/shipments/ClientSearchAutocomplete';
+import ShipmentSuccessModal from '../../components/shipments/ShipmentSuccessModal';
 import { clientsService } from '../../api/clientsService';
 import { agenciesService } from '../../api/agenciesService';
+import { routesService } from '../../api/routesService';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function ShipmentCreatePage() {
@@ -17,21 +20,49 @@ export default function ShipmentCreatePage() {
   const { wizard, setWizard, setWizardStep, resetWizard, addWizardPackage, updateWizardPackage, removeWizardPackage, getWizardTotals } = useShipmentWizard();
   const { create } = useShipmentForm();
   const [submitting, setSubmitting] = useState(false);
+  const [createdShipment, setCreatedShipment] = useState(null);
 
   const totals = getWizardTotals();
   const step = wizard.step;
 
   const [clients, setClients] = useState([]);
   const [agencies, setAgencies] = useState([]);
+  const [matchingRoutes, setMatchingRoutes] = useState([]);
 
   const loadData = async () => {
-    const [c, a] = await Promise.all([
-      clientsService.list(companyId, { limit: 100 }),
-      agenciesService.list(companyId, { limit: 100 }),
-    ]);
-    setClients(c.data || []);
-    setAgencies(a.data || []);
+    try {
+      const [c, a] = await Promise.all([
+        clientsService.list(companyId, { limit: 100 }),
+        agenciesService.list(companyId, { limit: 100 }),
+      ]);
+      setClients(c.data || []);
+      setAgencies(a.data || []);
+    } catch (err) {
+      console.log('Error loading wizard data:', err.message);
+    }
   };
+
+  useEffect(() => {
+    if (companyId) loadData();
+  }, [companyId]);
+
+  useEffect(() => {
+    if (companyId && wizard.originAgencyId && wizard.destinationAgencyId) {
+      routesService.getAll(companyId, {
+        filters: {
+          originAgencyId: wizard.originAgencyId,
+          destinationAgencyId: wizard.destinationAgencyId,
+        },
+      }).then((res) => {
+        const routes = res.data || [];
+        setMatchingRoutes(routes);
+        if (routes.length > 0) {
+          const mainRoute = routes[0];
+          setWizard({ routeId: mainRoute.id, routeName: mainRoute.name });
+        }
+      }).catch(() => setMatchingRoutes([]));
+    }
+  }, [companyId, wizard.originAgencyId, wizard.destinationAgencyId]);
 
   const ensureData = () => { if (clients.length === 0 || agencies.length === 0) loadData(); };
 
@@ -58,19 +89,34 @@ export default function ShipmentCreatePage() {
         packages: wizard.packages, observation: wizard.observation,
         totalAmount: totals.totalAmount, paidAmount: 0,
       });
-      toast.success(`Expédition ${shipment.shipmentNumber} créée`);
-      resetWizard();
-      navigate('/shipments');
-    } catch (err) { toast.error(err.message || 'Erreur'); } finally { setSubmitting(false); }
+
+      toast.success(`Expédition ${shipment.shipmentNumber || shipment.reference} créée`);
+      setCreatedShipment(shipment);
+    } catch (err) {
+      toast.error(err.message || 'Erreur lors de la création');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const selectClient = (field, clientId) => {
-    const c = clients.find((cl) => cl.id === clientId);
-    if (c) setWizard({ [field + 'Id']: c.id, [field + 'Name']: `${c.firstName} ${c.lastName}`, [field + 'Phone']: c.phone });
+  const selectClient = (field, clientObj) => {
+    if (!clientObj) {
+      setWizard({ [field + 'Id']: '', [field + 'Name']: '', [field + 'Phone']: '' });
+      return;
+    }
+    setWizard({
+      [field + 'Id']: clientObj.id,
+      [field + 'Name']: `${clientObj.firstName || ''} ${clientObj.lastName || ''}`.trim(),
+      [field + 'Phone']: clientObj.phone || '',
+    });
+  };
+
+  const handleClientCreated = (newClient) => {
+    setClients((prev) => [newClient, ...prev]);
   };
 
   const selectAgency = (prefix, agencyId) => {
-    const a = agencies.find((ag) => ag.id === agencyId);
+    const a = agencies.find((ag) => String(ag.id) === String(agencyId));
     if (a) setWizard({ [prefix + 'AgencyId']: a.id, [prefix + 'AgencyName']: a.name, [prefix + 'City']: a.city || '' });
   };
 
@@ -90,26 +136,30 @@ export default function ShipmentCreatePage() {
         {step === 1 && (
           <div>
             <h6 className="fw-semibold mb-3">Étape 1 — Expéditeur</h6>
-            <p className="text-muted small mb-3">Sélectionnez ou créez l'expéditeur.</p>
-            <label className="form-label small">Client expéditeur *</label>
-            <select className="form-select" value={wizard.senderId} onChange={(e) => selectClient('sender', e.target.value)} onFocus={ensureData}>
-              <option value="">Sélectionner un client</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.firstName} {c.lastName} — {c.phone}</option>)}
-            </select>
-            {wizard.senderId && <div className="mt-2 text-success small">✓ {wizard.senderName} ({wizard.senderPhone})</div>}
+            <p className="text-muted small mb-3">Recherchez par nom/téléphone ou créez rapidement l'expéditeur.</p>
+            <ClientSearchAutocomplete
+              clients={clients}
+              selectedClientId={wizard.senderId}
+              onSelectClient={(c) => selectClient('sender', c)}
+              onClientCreated={handleClientCreated}
+              companyId={companyId}
+              label="Client expéditeur"
+            />
           </div>
         )}
 
         {step === 2 && (
           <div>
             <h6 className="fw-semibold mb-3">Étape 2 — Destinataire</h6>
-            <p className="text-muted small mb-3">Sélectionnez ou créez le destinataire.</p>
-            <label className="form-label small">Client destinataire *</label>
-            <select className="form-select" value={wizard.receiverId} onChange={(e) => selectClient('receiver', e.target.value)} onFocus={ensureData}>
-              <option value="">Sélectionner un client</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.firstName} {c.lastName} — {c.phone}</option>)}
-            </select>
-            {wizard.receiverId && <div className="mt-2 text-success small">✓ {wizard.receiverName} ({wizard.receiverPhone})</div>}
+            <p className="text-muted small mb-3">Recherchez par nom/téléphone ou créez rapidement le destinataire.</p>
+            <ClientSearchAutocomplete
+              clients={clients}
+              selectedClientId={wizard.receiverId}
+              onSelectClient={(c) => selectClient('receiver', c)}
+              onClientCreated={handleClientCreated}
+              companyId={companyId}
+              label="Client destinataire"
+            />
           </div>
         )}
 
@@ -118,19 +168,26 @@ export default function ShipmentCreatePage() {
             <h6 className="fw-semibold mb-3">Étape 3 — Informations de transport</h6>
             <div className="row g-3">
               <div className="col-md-6">
-                <label className="form-label small">Agence de départ *</label>
+                <label className="form-label small fw-bold">Agence de départ *</label>
                 <select className="form-select" value={wizard.originAgencyId} onChange={(e) => selectAgency('origin', e.target.value)} onFocus={ensureData}>
-                  <option value="">Sélectionner</option>
+                  <option value="">Sélectionner l'agence de départ</option>
                   {agencies.map((a) => <option key={a.id} value={a.id}>{a.name} — {a.city}</option>)}
                 </select>
               </div>
               <div className="col-md-6">
-                <label className="form-label small">Agence de destination *</label>
+                <label className="form-label small fw-bold">Agence de destination *</label>
                 <select className="form-select" value={wizard.destinationAgencyId} onChange={(e) => selectAgency('destination', e.target.value)} onFocus={ensureData}>
-                  <option value="">Sélectionner</option>
+                  <option value="">Sélectionner l'agence d'arrivée</option>
                   {agencies.map((a) => <option key={a.id} value={a.id}>{a.name} — {a.city}</option>)}
                 </select>
               </div>
+              {matchingRoutes.length > 0 && (
+                <div className="col-12">
+                  <div className="p-2 border rounded bg-info bg-opacity-10 small">
+                    <strong>Route de transport associée :</strong> {matchingRoutes[0].name} ({matchingRoutes[0].distance} km · Durée estimée : {matchingRoutes[0].estimatedDuration}h)
+                  </div>
+                </div>
+              )}
               <div className="col-md-4">
                 <label className="form-label small">Poids max autorisé (kg)</label>
                 <input type="number" className="form-control" value={wizard.maxWeight} onChange={(e) => setWizard({ maxWeight: parseFloat(e.target.value) || 100 })} />
@@ -165,10 +222,16 @@ export default function ShipmentCreatePage() {
                 {wizard.packages.length > 0 && (
                   <div className="table-responsive">
                     <table className="table table-sm small mb-0">
-                      <thead><tr><th>#</th><th>Libellé</th><th>Poids</th><th>Montant</th></tr></thead>
+                      <thead><tr><th>#</th><th>Libellé</th><th>Catégorie</th><th>Poids</th><th>Montant</th></tr></thead>
                       <tbody>
                         {wizard.packages.map((p, i) => (
-                          <tr key={i}><td>{i + 1}</td><td>{p.label}</td><td>{p.weight} kg</td><td>{(p.totalAmount || 0).toLocaleString('fr-FR')} FC</td></tr>
+                          <tr key={i}>
+                            <td>{i + 1}</td>
+                            <td>{p.label}</td>
+                            <td>{p.category}</td>
+                            <td>{p.weight} kg</td>
+                            <td className="fw-bold">{(p.totalAmount || 0).toLocaleString('fr-FR')} FCFA</td>
+                          </tr>
                         ))}
                       </tbody>
                     </table>
@@ -197,6 +260,23 @@ export default function ShipmentCreatePage() {
           )}
         </div>
       </div>
+
+      {createdShipment && (
+        <ShipmentSuccessModal
+          shipment={createdShipment}
+          company={{ id: companyId }}
+          onClose={() => {
+            setCreatedShipment(null);
+            resetWizard();
+            navigate('/shipments');
+          }}
+          onNewShipment={() => {
+            setCreatedShipment(null);
+            resetWizard();
+            setWizardStep(1);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -28,14 +28,31 @@ import TrackingPage from '../pages/dashboard/client/TrackingPage';
 import PaymentDetailPage from '../pages/dashboard/client/PaymentDetailPage';
 import ProfilPage from '../pages/dashboard/client/ProfilPage';
 
+// All roles that can access the employee dashboard (DashboardLayout)
+const EMPLOYEE_ROLES = [
+  ROLES.COMPANY_ADMIN,
+  ROLES.SUPER_ADMIN,
+  ROLES.DEPOT_AGENT,
+  ROLES.RETRAIT_AGENT,
+  'manager',
+  'supervisor',
+  'accountant',
+  'delivery_driver',
+];
+
+// Roles restricted to admin-only sections (agencies, employees, pricing, etc.)
+const ADMIN_ONLY_ROLES = [ROLES.COMPANY_ADMIN, ROLES.SUPER_ADMIN];
+
 const appRouter = [
+  // ── Single DashboardLayout group for ALL employee roles ──
   {
     element: (
-      <ProtectedRoute allowedRoles={[ROLES.COMPANY_ADMIN, ROLES.SUPER_ADMIN]}>
+      <ProtectedRoute allowedRoles={EMPLOYEE_ROLES}>
         <DashboardLayout />
       </ProtectedRoute>
     ),
     children: [
+      // Super-admin sub-section
       {
         element: (
           <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
@@ -44,22 +61,37 @@ const appRouter = [
         ),
         children: [...adminRouter],
       },
+      // Admin-only sections (company admin + super admin)
+      {
+        element: (
+          <ProtectedRoute allowedRoles={ADMIN_ONLY_ROLES}>
+            <Outlet />
+          </ProtectedRoute>
+        ),
+        children: [
+          ...agencyRouter,
+          ...employeeRouter,
+          ...userRouter,
+          ...routeModuleRouter,
+          ...pricingRouter,
+          ...subscriptionRouter,
+        ],
+      },
+      // Shared routes accessible by all employee roles
       ...dashboardRouter,
-      ...agencyRouter,
-      ...employeeRouter,
-      ...userRouter,
       ...clientRouter,
       ...shipmentRouter,
-      ...routeModuleRouter,
-      ...pricingRouter,
       ...trackingRouter,
       ...paymentRouter,
       ...packagesRouter,
-      ...subscriptionRouter,
+
+      // Agent-specific dashboard pages
       { path: '/dashboard/depot', element: <DepotDashboardPage /> },
       { path: '/dashboard/retrait', element: <RetraitDashboardPage /> },
     ],
   },
+
+  // ── Client portal ──
   {
     path: '/dashboard/client',
     element: (
@@ -80,6 +112,7 @@ const appRouter = [
       { path: 'profil', element: <ProfilPage /> },
     ],
   },
+
   { path: '*', element: <Navigate to="/login" replace /> },
 ];
 

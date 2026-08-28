@@ -1,20 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, Briefcase, Shield, Camera } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, Briefcase, Shield, Camera, Building2 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useEmployee, useEmployeeForm } from '../../hooks/useEmployee';
+import { useAuth } from '../../hooks/useAuth';
 import ListSkeleton from '../../components/rbac/ListSkeleton';
 import StatusBadge from '../../components/rbac/StatusBadge';
 import Avatar from '../../components/rbac/Avatar';
+import EmployeeAgencyModal from '../../components/rbac/EmployeeAgencyModal';
 import { EMPLOYEE_POSITIONS } from '../../config/constants';
 import { employeesService } from '../../api/employeesService';
 import toast from 'react-hot-toast';
 
 export default function EmployeeDetailPage() {
+  const { companyId } = useAuth();
   const { id } = useParams();
   const { employee, loading, fetch, clearSelected } = useEmployee();
   const { update } = useEmployeeForm();
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  const [showAgencyModal, setShowAgencyModal] = useState(false);
 
   useEffect(() => { fetch(id); return () => clearSelected(); }, [id, fetch, clearSelected]);
 
@@ -50,6 +54,13 @@ export default function EmployeeDetailPage() {
           <p className="text-muted mb-0 small">Matricule: {employee.employeeCode}</p>
         </div>
         <div className="d-flex gap-2">
+          <button
+            type="button"
+            className="btn btn-outline-info btn-sm d-flex align-items-center gap-1"
+            onClick={() => setShowAgencyModal(true)}
+          >
+            <Building2 size={14} /> Affecter Agence
+          </button>
           <Link to={`/employees/${id}/edit`} className="btn btn-outline-primary btn-sm">Modifier</Link>
           <button type="button" className={`btn btn-sm ${employee.status === 'active' ? 'btn-outline-warning' : 'btn-outline-success'}`} onClick={handleToggle}>
             {employee.status === 'active' ? 'Désactiver' : 'Activer'}
@@ -93,14 +104,23 @@ export default function EmployeeDetailPage() {
         </div>
         <div className="col-lg-4">
           <div className="bg-white rounded-3 shadow-sm p-4 mb-4">
-            <h6 className="fw-semibold mb-3">Poste</h6>
-            <div className="d-flex align-items-center gap-2 mb-2"><Briefcase size={14} className="text-muted" /> <span className="small">{EMPLOYEE_POSITIONS[employee.position] || employee.position}</span></div>
-            <div className="small text-muted mb-1">Agence: {employee.agencyName || employee.agencyId}</div>
+            <h6 className="fw-semibold mb-3">Poste & Agence</h6>
+            <div className="d-flex align-items-center gap-2 mb-2"><Briefcase size={14} className="text-muted" /> <span className="small">{EMPLOYEE_POSITIONS[employee.position] || employee.position} ({employee.role || 'non-défini'})</span></div>
+            <div className="small text-muted mb-1">Agence: <strong>{employee.agencyName || 'Non affecté'}</strong></div>
             <div className="small text-muted mb-1">Embauché le: {employee.hireDate}</div>
             {employee.observation && <div className="small text-muted mt-2 fst-italic">"{employee.observation}"</div>}
           </div>
         </div>
       </div>
+
+      {showAgencyModal && (
+        <EmployeeAgencyModal
+          employee={employee}
+          companyId={companyId}
+          onClose={() => setShowAgencyModal(false)}
+          onSuccess={() => fetch(id)}
+        />
+      )}
     </div>
   );
 }

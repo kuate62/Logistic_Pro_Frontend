@@ -4,18 +4,28 @@ export function mapRoute(r) {
   if (!r) return null;
   const origin = r.originAgency?.name || '';
   const dest = r.destinationAgency?.name || '';
+  const originCity = r.originAgency?.city || '';
+  const destCity = r.destinationAgency?.city || '';
+  const name = r.name || (origin && dest ? `${origin} → ${dest}` : (originCity && destCity ? `${originCity} → ${destCity}` : 'Trajet'));
+
   return {
     id: r.id,
     companyId: r.companyId,
-    name: origin && dest ? `${origin} → ${dest}` : (r.name || ''),
+    code: r.code || `RT-${String(r.id).padStart(4, '0')}`,
+    name,
     description: r.description || '',
     originAgencyId: r.originAgencyId || '',
     originAgencyName: origin,
-    originCity: r.originAgency?.city || '',
+    originCity,
+    departureCity: originCity,
     destinationAgencyId: r.destinationAgencyId || '',
     destinationAgencyName: dest,
-    destinationCity: r.destinationAgency?.city || '',
+    destinationCity: destCity,
+    arrivalCity: destCity,
     status: r.status || 'planned',
+    distance: r.distance || 0,
+    estimatedDuration: r.estimatedDuration || 0,
+    price: r.price || 0,
     departureDate: r.departureDate || '',
     departureTime: '',
     arrivalDate: r.arrivalDate || '',
@@ -24,7 +34,6 @@ export function mapRoute(r) {
     driver: r.driver || '',
     note: r.note || '',
     observation: r.note || '',
-    distance: 0,
     maxWeight: 100,
     maxPackages: 50,
     createdAt: r.createdAt,
@@ -40,11 +49,16 @@ function combineDateTime(date, time) {
 
 export function toRoutePayload(data) {
   const payload = {};
+  if (data.name) payload.name = data.name;
+  if (data.code) payload.code = data.code;
   if (data.originAgencyId) payload.originAgencyId = Number(data.originAgencyId);
   if (data.destinationAgencyId) payload.destinationAgencyId = Number(data.destinationAgencyId);
+  if (data.distance !== undefined) payload.distance = Number(data.distance);
+  if (data.estimatedDuration !== undefined) payload.estimatedDuration = Number(data.estimatedDuration);
+  if (data.price !== undefined) payload.price = Number(data.price);
   if (data.status) payload.status = data.status;
-  payload.departureDate = combineDateTime(data.departureDate, data.departureTime) || null;
-  payload.arrivalDate = combineDateTime(data.arrivalDate, data.arrivalTime) || null;
+  if (data.departureDate) payload.departureDate = combineDateTime(data.departureDate, data.departureTime) || null;
+  if (data.arrivalDate) payload.arrivalDate = combineDateTime(data.arrivalDate, data.arrivalTime) || null;
   if (data.vehicle) payload.vehicle = data.vehicle;
   if (data.driver) payload.driver = data.driver;
   payload.note = data.observation || data.note || '';

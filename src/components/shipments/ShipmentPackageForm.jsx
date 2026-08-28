@@ -87,9 +87,9 @@ export default function ShipmentPackageForm({ packages, maxWeight, currentWeight
                   <td className="small">{p.category}</td>
                   <td className="small">{p.weight} kg</td>
                   <td className="small text-muted">{p.length}×{p.width}×{p.height}</td>
-                  <td className="small">{(p.declaredValue || 0).toLocaleString('fr-FR')} FC</td>
+                  <td className="small">{(p.declaredValue || 0).toLocaleString('fr-FR')} FCFA</td>
                   <td className="small">{p.fragile ? '🔋' : ''}{p.insured ? '🛡️' : ''}</td>
-                  <td className="small fw-medium">{(p.totalAmount || 0).toLocaleString('fr-FR')} FC</td>
+                  <td className="small fw-medium">{(p.totalAmount || 0).toLocaleString('fr-FR')} FCFA</td>
                   <td>
                     <div className="d-flex gap-1">
                       <button type="button" className="btn btn-sm btn-outline-primary rounded-pill px-2 py-1" onClick={() => openEdit(idx)}><Edit size={12} /></button>

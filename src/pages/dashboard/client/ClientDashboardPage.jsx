@@ -51,7 +51,9 @@ export default function ClientDashboardPage() {
     email: client.email,
     phone: client.phone,
     city: client.city,
-    company: client.company || company?.name,
+    company: typeof client.company === 'string'
+      ? client.company
+      : (client.company?.name || company?.name || ''),
     memberSince: client.memberSince,
   } : null, [client, company]);
 

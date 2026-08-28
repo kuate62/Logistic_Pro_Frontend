@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AuthCard, AuthHeader, AuthFooter } from '../../components/auth';
 import { FormField, EmailInput, PasswordInput, LoadingButton, FormError } from '../../components/form';
@@ -12,6 +12,7 @@ import './LoginPage.css';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const emailRef = useRef(null);
 
@@ -42,10 +43,12 @@ export function LoginPage() {
   const onSubmit = async (e) => {
     try {
       const result = await handleSubmit(e);
-      if(result) {
+      if (result) {
         toast.success('Connexion réussie ! Bienvenue.');
         const { user } = useAuthStore.getState();
-        navigate(getHomePath(user));
+        const from = location.state?.from?.pathname;
+        const targetPath = from && from !== '/login' ? from : getHomePath(user);
+        navigate(targetPath, { replace: true });
       }
     } catch {
       toast.error('Identifiants incorrects.');

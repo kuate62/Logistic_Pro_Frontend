@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Package, Menu, X, User, LayoutDashboard, UserCircle, Settings, LogOut, Mail, Phone, MapPin } from 'lucide-react';
+import { Package, Menu, X, User, LogIn, UserPlus, Mail, Phone, MapPin } from 'lucide-react';
 import useEntrepriseStore from '../store/useEntrepriseStore';
-import useAuthStore from '../store/useAuthStore';
-import { getHomePath } from '../utils/homePath';
+import { useAuth } from '../hooks/useAuth';
+import { PublicUserMenu } from '../components/layout/PublicUserMenu';
 import './PublicLayout.css';
 
 export default function PublicLayout() {
   const { idEntreprise } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const company = useEntrepriseStore((s) => s.selectedCompany);
   const selectCompany = useEntrepriseStore((s) => s.selectCompany);
 
@@ -100,30 +101,27 @@ export default function PublicLayout() {
               <Package size={16} />
               Suivre mon colis
             </Link>
-            <div className="pp-nav__user-wrap" ref={userRef}>
-              <button
-                className="pp-nav__user"
-                onClick={() => setUserOpen(!userOpen)}
-                aria-label="Menu utilisateur"
-              >
-                <User size={20} />
-              </button>
-              <div className={`pp-nav__dropdown ${userOpen ? 'pp-nav__dropdown--open' : ''}`}>
-                <button className="pp-nav__dropdown-item" onClick={() => handleUserNav(getHomePath(useAuthStore.getState().user))}>
-                  <LayoutDashboard size={16} /> Tableau de bord
+            {user ? (
+              <PublicUserMenu />
+            ) : (
+              <div className="pp-nav__user-wrap" ref={userRef}>
+                <button
+                  className="pp-nav__user"
+                  onClick={() => setUserOpen(!userOpen)}
+                  aria-label="Menu utilisateur"
+                >
+                  <User size={20} />
                 </button>
-                <button className="pp-nav__dropdown-item" onClick={() => handleUserNav('/clients')}>
-                  <UserCircle size={16} /> Profil
-                </button>
-                <button className="pp-nav__dropdown-item" onClick={() => handleUserNav(getHomePath(useAuthStore.getState().user))}>
-                  <Settings size={16} /> Paramètres
-                </button>
-                <div className="pp-nav__dropdown-separator" />
-                <button className="pp-nav__dropdown-item" onClick={() => handleUserNav('/login')}>
-                  <LogOut size={16} /> Connexion
-                </button>
+                <div className={`pp-nav__dropdown ${userOpen ? 'pp-nav__dropdown--open' : ''}`}>
+                  <button className="pp-nav__dropdown-item" onClick={() => handleUserNav('/login')}>
+                    <LogIn size={16} /> Connexion
+                  </button>
+                  <button className="pp-nav__dropdown-item" onClick={() => handleUserNav('/register')}>
+                    <UserPlus size={16} /> S'inscrire
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
             <button
               className="pp-nav__hamburger"
               onClick={() => setMobileOpen(!mobileOpen)}
@@ -147,12 +145,18 @@ export default function PublicLayout() {
           </Link>
         ))}
         <div className="pp-nav__mobile-divider" />
-        <Link to="/login" className="pp-nav__mobile-link" onClick={closeMobile}>
-          Connexion
-        </Link>
-        <Link to="/register" className="pp-nav__mobile-link pp-nav__mobile-link--primary" onClick={closeMobile}>
-          S'inscrire
-        </Link>
+        {user ? (
+          <PublicUserMenu />
+        ) : (
+          <>
+            <Link to="/login" className="pp-nav__mobile-link" onClick={closeMobile}>
+              Connexion
+            </Link>
+            <Link to="/register" className="pp-nav__mobile-link pp-nav__mobile-link--primary" onClick={closeMobile}>
+              S'inscrire
+            </Link>
+          </>
+        )}
       </div>
 
       <main className="pp-landing-main">

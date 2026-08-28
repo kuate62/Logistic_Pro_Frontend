@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
-  LayoutDashboard, Package, Truck, CreditCard, Search, User, LogOut,
+  LayoutDashboard, Package, Truck, CreditCard, Search, User, LogOut, House,
 } from 'lucide-react';
 
 const CLIENT_NAV = [
@@ -50,6 +50,10 @@ export function ClientSidebar({ sidebarOpen = false }) {
       </nav>
 
       <div className="cl-sidebar__footer">
+        <NavLink to="/" className="cl-sidebar__link cl-sidebar__link--logout">
+          <House size={20} className="cl-sidebar__link-icon" />
+          <span className="cl-sidebar__link-label">Retour au site</span>
+        </NavLink>
         <button
           className="cl-sidebar__link cl-sidebar__link--logout"
           onClick={logout}

@@ -23,7 +23,7 @@ export function mapPrice(p) {
     fixedPrice: p.fixedFee ?? 0,
     insuranceRate: 0,
     additionalFees: 0,
-    currency: 'FC',
+    currency: 'FCFA',
     effectiveFrom: '',
     effectiveTo: null,
     observation: '',

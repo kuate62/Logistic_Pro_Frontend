@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import './PlansPage.css';
 
 const EMPTY_FORM = {
+  code: '',
   name: '',
   price: '',
   maxAgencies: '',
@@ -17,6 +18,14 @@ const EMPTY_FORM = {
   features: '',
   description: '',
 };
+
+const slugifyCode = (s) =>
+  String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat('fr-FR', { style: 'decimal', maximumFractionDigits: 0 }).format(value);
@@ -49,6 +58,7 @@ export default function PlansPage() {
   const openEdit = (plan) => {
     setEditingPlan(plan);
     setFormData({
+      code: plan.code || '',
       name: plan.name,
       price: String(plan.price),
       maxAgencies: String(plan.maxAgencies),
@@ -68,7 +78,13 @@ export default function PlansPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === 'name' && !editingPlan && (!prev.code || prev.code === slugifyCode(prev.name))) {
+        next.code = slugifyCode(value);
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -76,6 +92,7 @@ export default function PlansPage() {
     setSaving(true);
     try {
       const payload = {
+        code: slugifyCode(formData.code || formData.name),
         name: formData.name,
         price: Number(formData.price),
         maxAgencies: Number(formData.maxAgencies),
@@ -191,17 +208,32 @@ export default function PlansPage() {
               </button>
             </div>
             <form className="sa-plans__form" onSubmit={handleSubmit}>
-              <div className="sa-plans__field">
-                <label className="sa-plans__label">Nom du plan</label>
-                <input
-                  className="sa-plans__input"
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  placeholder="Ex: Starter"
-                />
+              <div className="sa-plans__row">
+                <div className="sa-plans__field">
+                  <label className="sa-plans__label">Nom du plan</label>
+                  <input
+                    className="sa-plans__input"
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                    placeholder="Ex: Starter"
+                  />
+                </div>
+                <div className="sa-plans__field">
+                  <label className="sa-plans__label">Code du plan (unique)</label>
+                  <input
+                    className="sa-plans__input"
+                    type="text"
+                    name="code"
+                    value={formData.code}
+                    onChange={handleChange}
+                    required
+                    disabled={!!editingPlan}
+                    placeholder="Ex: starter"
+                  />
+                </div>
               </div>
 
               <div className="sa-plans__row">

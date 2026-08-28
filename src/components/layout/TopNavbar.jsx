@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { ROLE_LABELS, ROLES } from '../../config/constants';
-import { Search, Bell, ChevronDown, User, Settings, LogOut, Menu } from 'lucide-react';
+import { Search, Bell, ChevronDown, User, Settings, LogOut, Menu, House } from 'lucide-react';
 import './TopNavbar.css';
 
 export function TopNavbar({ onToggleSidebar }) {
@@ -73,6 +73,15 @@ export function TopNavbar({ onToggleSidebar }) {
       </div>
 
       <div className="lp-topnavbar__right">
+        <button
+          className="lp-topnavbar__icon-btn"
+          onClick={() => navigate('/')}
+          aria-label="Aller à l'accueil"
+          title="Retour au site"
+        >
+          <House size={20} />
+        </button>
+
         <div className="lp-topnavbar__notif-wrapper" ref={notifRef}>
           <button
             className="lp-topnavbar__icon-btn"

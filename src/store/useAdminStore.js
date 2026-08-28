@@ -150,6 +150,15 @@ const useAdminStore = create((set) => ({
     } catch (err) { set({ loading: false, error: err.message }); }
   },
 
+  createSuperAdmin: async (data) => {
+    set({ loading: true, error: null });
+    try {
+      const user = await adminService.createSuperAdmin(data);
+      set((s) => ({ platformUsers: [...s.platformUsers, user], loading: false }));
+      return user;
+    } catch (err) { set({ loading: false, error: err.message }); throw err; }
+  },
+
   fetchManagers: async () => {
     set({ loading: true, error: null });
     try {

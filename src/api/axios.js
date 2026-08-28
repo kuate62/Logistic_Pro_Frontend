@@ -24,6 +24,25 @@ apiClient.interceptors.response.use(
       localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
       window.location.href = '/login';
     }
+
+    // Extraire le message précis renvoyé par la validation de schéma ou le backend
+    const serverMessage =
+      error.response?.data?.message ||
+      (typeof error.response?.data === 'string' ? error.response.data : null) ||
+      error.response?.data?.error;
+
+    if (serverMessage) {
+      error.message = serverMessage;
+    } else if (error.response?.status === 429) {
+      error.message = 'Trop de requêtes effectuées. Veuillez patienter un instant avant de réessayer.';
+    } else if (error.response?.status === 403) {
+      error.message = 'Accès non autorisé pour cette action.';
+    } else if (error.response?.status === 404) {
+      error.message = 'Ressource introuvable.';
+    } else if (error.response?.status === 500) {
+      error.message = 'Une erreur interne est survenue sur le serveur.';
+    }
+
     return Promise.reject(error);
   }
 );

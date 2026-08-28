@@ -9,6 +9,9 @@ import ShipmentStatus from '../../components/shipments/ShipmentStatus';
 import ShipmentWeightIndicator from '../../components/shipments/ShipmentWeightIndicator';
 import ShipmentPriceSummary from '../../components/shipments/ShipmentPriceSummary';
 import ShipmentTimeline from '../../components/shipments/ShipmentTimeline';
+import ShipmentReceiptModal from '../../components/shipments/ShipmentReceiptModal';
+import ParcelLabelModal from '../../components/shipments/ParcelLabelModal';
+import { useAuth } from '../../hooks/useAuth';
 
 const TABS = [
   { key: 'info', label: 'Informations' },
@@ -17,11 +20,14 @@ const TABS = [
 ];
 
 export default function ShipmentDetailPage() {
+  const { companyId } = useAuth();
   const { id } = useParams();
   const { shipment, loading, history, fetch, fetchHistory, clearSelected } = useShipment();
   const { cancel, archive, updateStatus } = useShipmentForm();
   const [activeTab, setActiveTab] = useState('info');
   const [nextStatus, setNextStatus] = useState('');
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedLabelParcel, setSelectedLabelParcel] = useState(null);
 
   useEffect(() => { fetch(id); return () => clearSelected(); }, [id, fetch, clearSelected]);
   useEffect(() => { if (activeTab === 'history') fetchHistory(id); }, [activeTab, id, fetchHistory]);
@@ -58,7 +64,7 @@ export default function ShipmentDetailPage() {
         <Link to="/shipments" className="btn btn-outline-secondary btn-sm rounded-pill"><ArrowLeft size={16} /></Link>
         <div className="flex-grow-1">
           <h4 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
-            <Truck size={22} className="text-primary" /> {shipment.shipmentNumber}
+            <Truck size={22} className="text-primary" /> {shipment.shipmentNumber || shipment.reference}
           </h4>
           <div className="d-flex align-items-center gap-2">
             <ShipmentStatus status={shipment.status} />
@@ -66,6 +72,13 @@ export default function ShipmentDetailPage() {
           </div>
         </div>
         <div className="d-flex gap-2 align-items-center">
+          <button
+            type="button"
+            className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
+            onClick={() => setShowReceiptModal(true)}
+          >
+            <FileText size={14} /> Reçu Client
+          </button>
           {canChangeStatus && flowOptions.length > 1 && (
             <div className="d-flex align-items-center gap-2">
               <select className="form-select form-select-sm" value={effectiveNextStatus} onChange={(e) => setNextStatus(e.target.value)}>
@@ -155,10 +168,19 @@ export default function ShipmentDetailPage() {
                       <td className="small">{p.category}</td>
                       <td className="small">{p.weight} kg</td>
                       <td className="small text-muted">{p.length}×{p.width}×{p.height}</td>
-                      <td className="small">{(p.declaredValue || 0).toLocaleString('fr-FR')} FC</td>
+                      <td className="small">{(p.declaredValue || 0).toLocaleString('fr-FR')} FCFA</td>
                       <td className="small">{p.fragile ? '🔋 Oui' : '—'}</td>
                       <td className="small">{p.insured ? '🛡️ Oui' : '—'}</td>
-                      <td className="small fw-medium">{(p.totalAmount || 0).toLocaleString('fr-FR')} FC</td>
+                      <td className="small fw-medium">{(p.totalAmount || 0).toLocaleString('fr-FR')} FCFA</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-dark text-xs d-flex align-items-center gap-1"
+                          onClick={() => setSelectedLabelParcel(p)}
+                        >
+                          <Printer size={12} /> Étiquette
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -169,6 +191,23 @@ export default function ShipmentDetailPage() {
       )}
 
       {activeTab === 'history' && <ShipmentTimeline history={history} loading={loading.history} />}
+
+      {showReceiptModal && (
+        <ShipmentReceiptModal
+          shipment={shipment}
+          company={{ id: companyId }}
+          onClose={() => setShowReceiptModal(false)}
+        />
+      )}
+
+      {selectedLabelParcel && (
+        <ParcelLabelModal
+          parcel={selectedLabelParcel}
+          shipment={shipment}
+          company={{ id: companyId }}
+          onClose={() => setSelectedLabelParcel(null)}
+        />
+      )}
     </div>
   );
 }

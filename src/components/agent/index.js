@@ -10,3 +10,6 @@ export { NotificationPanel } from './NotificationPanel';
 export { AlertCard } from './AlertCard';
 export { EmptyState } from './EmptyState';
 export { LoadingState } from './LoadingState';
+export { WithdrawalModal } from './WithdrawalModal';
+export { AnomalyModal } from './AnomalyModal';
+export { AgentScanModal } from './AgentScanModal';

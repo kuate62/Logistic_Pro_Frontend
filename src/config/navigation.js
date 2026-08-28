@@ -3,7 +3,7 @@ import {
   Settings, CreditCard, Route, LogOut,
   LayoutDashboard, Search, Tags, Repeat,
   UserCog, DollarSign,
-  Crown, Briefcase, Bell, User, Shield, Inbox,
+  Crown, Briefcase, Bell, User, Shield, Inbox, House, Send, Plus,
 } from 'lucide-react';
 
 export const NAV_ITEMS = [
@@ -24,6 +24,25 @@ export const NAV_ITEMS = [
   { key: 'settings', label: 'Paramètres', icon: Settings, path: '/settings' },
 ];
 
+export const DEPOT_AGENT_NAV = [
+  { key: 'depot_dashboard', label: 'Tableau de bord', icon: LayoutDashboard, path: '/dashboard/depot' },
+  { key: 'depot_shipments', label: 'Expéditions', icon: Truck, path: '/shipments' },
+  { key: 'depot_new_shipment', label: 'Nouvelle expédition', icon: Send, path: '/shipments/new' },
+  { key: 'depot_packages', label: 'Colis', icon: Package, path: '/packages' },
+  { key: 'depot_tracking', label: 'Suivi de colis', icon: Search, path: '/tracking' },
+  { key: 'depot_customers', label: 'Clients', icon: Users, path: '/customers' },
+  { key: 'depot_payments', label: 'Paiements', icon: DollarSign, path: '/payments' },
+];
+
+export const RETRAIT_AGENT_NAV = [
+  { key: 'retrait_dashboard', label: 'Tableau de bord', icon: LayoutDashboard, path: '/dashboard/retrait' },
+  { key: 'retrait_packages', label: 'Colis & Retraits', icon: Package, path: '/packages' },
+  { key: 'retrait_shipments', label: 'Expéditions', icon: Truck, path: '/shipments' },
+  { key: 'retrait_tracking', label: 'Suivi de colis', icon: Search, path: '/tracking' },
+  { key: 'retrait_customers', label: 'Clients', icon: Users, path: '/customers' },
+  { key: 'retrait_payments', label: 'Paiements', icon: DollarSign, path: '/payments' },
+];
+
 export const SUPER_ADMIN_NAV = [
   { key: 'admin_dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
   { key: 'admin_commercial', label: 'Gestion commerciale', icon: DollarSign, children: [
@@ -41,6 +60,7 @@ export const SUPER_ADMIN_NAV = [
 ];
 
 export const NAV_FOOTER = [
+  { key: 'home', label: 'Retour au site', icon: House, action: 'home' },
   { key: 'logout', label: 'Déconnexion', icon: LogOut, action: 'logout' },
 ];
 

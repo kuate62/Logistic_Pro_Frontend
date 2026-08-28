@@ -30,7 +30,7 @@ export function ProfileCard({ client, formatDate }) {
         </div>
         {client.company && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            <Building2 size={14} style={{ flexShrink: 0, color: 'var(--color-text-muted)' }} /> {client.company}
+            <Building2 size={14} style={{ flexShrink: 0, color: 'var(--color-text-muted)' }} /> {typeof client.company === 'string' ? client.company : client.company?.name || ''}
           </div>
         )}
         {client.memberSince && (
