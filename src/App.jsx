@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import index from "./route/index.jsx";
 import useAuthStore from "./store/useAuthStore";
 
@@ -10,7 +11,12 @@ function App() {
     useAuthStore.getState().initApp();
   }, []);
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Analytics />
+    </>
+  );
 }
 
 export default App;
